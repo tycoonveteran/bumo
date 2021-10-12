@@ -1,0 +1,17 @@
+version: '3.5'
+
+services:
+  phpwebserver:
+    container_name: phpwebserver
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - "80:80"
+      - "12345:12345"
+    volumes:
+      - ./:/var/www
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
