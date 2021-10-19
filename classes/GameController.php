@@ -1,32 +1,69 @@
 <?php declare(strict_types=1);
 
 class GameController 
+implements JsonSerializable
 {
+    public const GAME_INIT = 1;
+    public const GAME_RUNNING = 2;
+    public const GAME_FINISHED = 3;
     
+    /** @var Player[] */
     private array $players;
+
     private string $gameId; 
 
+    /** @var Card[] Abgelegte Kartenstapel */
     private array $staple;
+    /** @var Card[] Verdeckter Kartenstapel */
+    private array $cardDeck;
 
-    public function __construct(array $players)
+    private int $cardCount;
+
+    private int $nextPlayer = 0;
+
+    private int $gameStatus; 
+
+    public function __construct(Player $currentPlayer, $gameId = null, int $cardCount = 7)
     {
-        $this->players = $players;
-        $this->gameId = uniqid();
+        // Neues Spiel, erster Spieler
+        $this->gameId = $gameId ?? uniqid();
+        $this->gameStatus = self::GAME_INIT;
+        $this->cardCount = $cardCount;
+        $this->joinGame($currentPlayer);
     }
 
-    public function initNewGame () 
+    public function joinGame (Player $currentPlayer) 
+    {
+        $this->players[] = $currentPlayer;
+    }
+
+    public function canStartNewGame() : bool 
+    {
+        return count($this->players) > 1;        
+    }
+
+    public function initNewGame () : void
     {
         // 1. Kartenstapel erzeugen
-        $cards = $this->createCardDeck();
+        $this->cardDeck = $this->createCardDeck();
 
         // 2. Mischen
-        $cards = $this->shuffleCardDeck($cards);
+        $this->shuffleCardDeck();
 
+        // 3. Karten verteilen
+        for ($cardCounter = 1; $cardCounter <= $this->cardCount; $cardCounter++) {
+            foreach ($this->players as $player) {
+                $player->addCard($this->getTopCardFromDeck());
+            }
+        }
         
+        // Nun hat jeder Spieler X Karten auf der Hand.
+        // 4. Oberste Karte offenlegen. 
+        $this->addTopCardToStaple($this->getTopCardFromDeck());
+        
+        // 5. Spiel starten
+        $this->gameStatus = self::GAME_RUNNING;
     }
-
-
-
 
     public function getGameId() 
     {
@@ -67,9 +104,82 @@ class GameController
         return $cardDeck;
     }
 
-    public function shuffleCardDeck(array $cardDeck) : array 
+    public function shuffleCardDeck() : void
     {
         shuffle($cardDeck);
-        return $cardDeck;
+    }
+
+    public function getTopCardFromDeck () : Card
+    {
+        return array_slice ($this->staple, 0, 1)[0];
+    }
+
+    public function addTopCardToStaple (Card $card) : void
+    {
+        $this->staple[] = $card;
+    }
+
+    public function checkCardsCompatible(Card $card1, Card $card2) : bool 
+    {
+        if (in_array (CardColor::SPECIAL, [$card1->getCardColor(), $card2->getCardColor()])) {
+            // Einer der beiden Karten ist ein Joker / 4+, das heißt es kann 
+            // eine beliebige Karte folgen bzw. diese kann auf eine beliebige
+            // Karte gelegt werden. 
+            return true;
+        }
+
+        if ($card1->getCardColor() == $card2->getCardColor()) {
+            // Karten haben die selbe Farbe
+            return true;
+        }
+
+        if ($card1->getCardValue() == $card2->getCardValue()) {
+            // Karte hat die selbe Zahl => Farbwechsel
+            return true;
+        }
+        // Ansonsten passen die Karten nicht aufeinander
+        return false;
+    }
+
+    public function makePlayerMove ($cardIndex) : bool
+    {
+        // Variante 1: Spieler legt Karte
+        $playerCard = $this->players[$this->nextPlayer]->getCardByIndex($cardIndex);
+        if ($this->checkCardsCompatible(end($this->staple), $playerCard)) {
+            $this->staple[] = $playerCard;
+            $this->players[$this->nextPlayer]->removeCard($cardIndex);
+            
+            if ($this->checkPlayerWins()) {
+                $this->gameStatus = self::GAME_FINISHED;
+            } else {
+                $this->nextPlayer = $this->nextPlayerIndex();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private function nextPlayerIndex() : int 
+    {
+        if (next($this->players) === false) {
+            reset($this->players);
+        } 
+        return key($this->players);
+    }
+
+    private function checkPlayerWins () : bool 
+    {
+        return count($this->players[$this->nextPlayer]->getCards()) == 0;
+    }
+
+    public function addCardForPlayer() : void 
+    {
+        // Variante 2: Spieler zieht Karte
+        $this->players[$this->nextPlayer]->addCard($this->getTopCardFromDeck());
+    }
+
+    public function jsonSerialize() : mixed 
+    {
+
     }
 }

@@ -1,0 +1,14 @@
+{
+    "name": "tycoonveteran/bumo",
+    "description": "Ein cooler Multiplayer Penner Kartenspiel",
+
+    "require": {
+        "php-mqtt/client": "*"
+    },
+    
+    "autoload": {
+        "classmap": [
+            "classes"
+        ]
+    }
+}

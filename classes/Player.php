@@ -7,10 +7,10 @@ class Player
     private string $name;
     private string $playerId;
     
-    public function __construct(string $name) 
+    public function __construct(string $name, string $playerId) 
     {
         $this->name = $name;    
-        $this->playerId = uniqid();    
+        $this->playerId = $playerId ?? uniqid();    
     }
 
     public function getPlayerId() : string 
@@ -24,10 +24,14 @@ class Player
         return $this;
     }
 
-    public function removeCard($cardIndex) : Player 
+    public function removeCard($cardIndex) : Card 
     {
-        array_slice ($this->playerCards, $cardIndex, 1);
-        return $this;
+        return array_slice ($this->playerCards, $cardIndex, 1)[0];
+    }
+
+    public function getCardByIndex ($cardIndex) : Card 
+    {
+        return $this->playerCards[$cardIndex];
     }
 
     public function getCards() : array 

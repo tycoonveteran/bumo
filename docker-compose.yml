@@ -1,6 +1,18 @@
 version: '3.5'
 
 services:
+  composer_install:
+    container_name: composer_install_bumo
+    image: composer
+    volumes:
+      - ./:/app
+    command: composer update
+    network_mode: host
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
   phpwebserver:
     container_name: phpwebserver
     build:
