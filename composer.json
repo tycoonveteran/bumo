@@ -3,7 +3,9 @@
     "description": "Ein cooler Multiplayer Penner Kartenspiel",
 
     "require": {
-        "php-mqtt/client": "*"
+        "php-mqtt/client": "*",
+        "workerman/mqtt": "*",
+        "workerman/phpsocket.io": "*"
     },
     
     "autoload": {

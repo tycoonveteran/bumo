@@ -21,6 +21,8 @@ services:
     ports:
       - "80:80"
       - "12345:12345"
+      - "2022:2022"
+      - "2020:2020"
     volumes:
       - ./:/var/www
     logging:

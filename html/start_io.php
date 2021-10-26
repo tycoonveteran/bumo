@@ -1,5 +1,4 @@
 <?php
-
 use Workerman\Worker;
 use Workerman\WebServer;
 use Workerman\Autoloader;
@@ -11,42 +10,48 @@ require_once "../vendor/autoload.php";
 $io = new SocketIO(2020);
 $io->on('connection', function($socket){
     $socket->addedUser = false;
+    // when the client emits 'new message', this listens and executes
+    $socket->on('new message', function ($data)use($socket){
+        // we tell the client to execute 'new message'
+        $socket->broadcast->emit('new message', array(
+            'username'=> $socket->username,
+            'message'=> $data
+        ));
+    });
 
     // when the client emits 'add user', this listens and executes
-    $socket->on('join', function ($username) use($socket){
+    $socket->on('add user', function ($username) use($socket){
         global $usernames, $numUsers;
         // we store the username in the socket session for this client
         $socket->username = $username;
-        $socket->userid = uniqid();
-
-        $socket->webSocketHandler = new WebSocketServer(
-            $socket->username, 
-            $socket->userid,
-            null
-        );
-
-        $socket->webSocketHandler->getGameList(function($topic, $message) use ($socket){
-            print 'sending game id: ' . $message;
-            $socket->emit($message);
-        });
-        
         // add the client's username to the global list
         $usernames[$username] = $username;
         ++$numUsers;
         $socket->addedUser = true;
-
-        $socket->emit('game', array( 
-            'gameId' => $socket->webSocketHandler->gameController->getGameId(),
-            'gameController' => serialize( $socket->webSocketHandler->gameController )
+        $socket->emit('login', array( 
+            'numUsers' => $numUsers
         ));
-
         // echo globally (all clients) that a person has connected
         $socket->broadcast->emit('user joined', array(
+            'username' => $socket->username,
             'numUsers' => $numUsers
         ));
     });
 
-    
+    // when the client emits 'typing', we broadcast it to others
+    $socket->on('typing', function () use($socket) {
+        $socket->broadcast->emit('typing', array(
+            'username' => $socket->username
+        ));
+    });
+
+    // when the client emits 'stop typing', we broadcast it to others
+    $socket->on('stop typing', function () use($socket) {
+        $socket->broadcast->emit('stop typing', array(
+            'username' => $socket->username
+        ));
+    });
+
     // when the user disconnects.. perform this
     $socket->on('disconnect', function () use($socket) {
         global $usernames, $numUsers;
@@ -62,10 +67,9 @@ $io->on('connection', function($socket){
             ));
         }
    });
+   
 });
 
 if (!defined('GLOBAL_START')) {
     Worker::runAll();
 }
-
-Worker::runAll();

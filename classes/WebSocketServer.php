@@ -1,12 +1,15 @@
 <?php 
 
+use Workerman\Worker;
+use Workerman\Timer;
+
 class WebSocketServer {
 
     private string $bindAddress = '0.0.0.0';
     private int $port = 12345;
     private $server, $client;
 
-    private GameController $gameController;
+    public GameController $gameController;
     private Player $player;
     private MQTTBotClient $mqttClient;
 
@@ -27,68 +30,50 @@ class WebSocketServer {
             $this->gameController = new GameController($this->player, $gameId);
             $this->gameId = $this->gameController->getGameId();
             // publish game!
-            print "Publish New Game! " . PHP_EOL;
-
-            $this->mqttClient->sendMessage(
-                "bumo/".$this->gameController->getGameId(), 
-                serialize($this->gameController)
-            );
+            $task = new Worker();
+            $task->onWorkerStart = function ($task) {
+                // 2.5 seconds
+                $time_interval = 2.5; 
+                $timer_id = Timer::add($time_interval, function () {
+                    print "Publish New Game! " . PHP_EOL;
+                    $this->mqttClient->sendMessage(
+                        "bumo/game", 
+                        $this->gameController->getGameId()
+                    );
+                });
+            };
+            $task->run();
         } else {
             $this->gameId = $gameId;
             $this->needsToJoin = true;
         }
+    }
 
-        // Create WebSocket.
-        $this->server = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        socket_set_option($this->server, SOL_SOCKET, SO_REUSEADDR, 1);
-        socket_bind($this->server, $this->bindAddress, $this->port);
-        socket_listen($this->server);
-        $this->client = socket_accept($this->server);
-
-        // Send WebSocket handshake headers.
-        $request = socket_read($this->client, 5000);
-        preg_match('#Sec-WebSocket-Key: (.*)\r\n#', $request, $matches);
-        $key = base64_encode(pack(
-            'H*',
-            sha1($matches[1] . "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
-        ));
-
-        $headers = "HTTP/1.1 101 Switching Protocols\r\n";
-        $headers .= "Upgrade: websocket\r\n";
-        $headers .= "Connection: Upgrade\r\n";
-        $headers .= "Sec-WebSocket-Version: 13\r\n";
-        $headers .= "Sec-WebSocket-Accept: $key\r\n\r\n";
-        socket_write($this->client, $headers, strlen($headers));
+    public function getGameList($callBackFunction) 
+    {
+        print 'call getGameList';
+        $this->mqttClient->subscribeToTopic(
+            "bumo/game",
+            $callBackFunction
+        );
     }
 
     public function keepAlive() 
     {
         
-        while (true) {
-            sleep(1);
+        $this->mqttClient->subscribeToTopic(
+            "bumo/".$this->gameId,
+            $this->getTopicRefreshedEvent()
+        );
 
-            $this->mqttClient->sendMessage(
-                "bumo/".$this->gameController->getGameId(), 
-                serialize($this->gameController)
-            );
-
-            $response = chr(129) . chr(strlen($this->gameId)) .  $this->gameId;
-            socket_write($this->client, $response);
-
-            $this->mqttClient->subscribeToTopic(
-                "bumo/".$this->gameId,
-                $this->getTopicRefreshedEvent()
-            );
-            /*
-            $buf = '';
-            if (false !== ($bytes = socket_recv($this->client, $buf, 2048, MSG_DONTWAIT)))
-            {
-                print "Got $bytes from client!";
-                print $buf;
-            }
-            */
-            
+        /*
+        $buf = '';
+        if (false !== ($bytes = socket_recv($this->client, $buf, 2048, MSG_DONTWAIT)))
+        {
+            print "Got $bytes from client!";
+            print $buf;
         }
+        */
     }
 
     private function getTopicRefreshedEvent () 
@@ -109,9 +94,58 @@ class WebSocketServer {
                     );
                 }
 
-                socket_write($this->client, json_encode($this->gameController));
+                //socket_write($this->client, json_encode($this->gameController));
             }
         };
     }
-
 }
+
+/*
+// Global array to save uid online data
+$uidConnectionMap = array();
+// Record the number of online users last broadcast
+$last_online_count = 0;
+  
+  
+// PHPSocketIO service
+$sender_io = new SocketIO(2120);
+// When the client initiates a connection event, it sets various event callbacks for the connection socket
+  
+// Listen to an http port when $sender GUI is started, through which you can push data to any uid or all UIDs
+$sender_io->on('workerStart', function(){
+ // Listening to an http port
+ $inner_http_worker = new Worker('http://0.0.0.0:2121');
+ // Triggered when the http client sends data
+ $inner_http_worker->onMessage = function($http_connection, $data){
+ global $uidConnectionMap;
+ $_POST = $_POST ? $_POST : $_GET;
+ // url format of push data type = publish & to = uid & content = XXXX
+ switch(@$_POST['type']){
+ case 'publish':
+ global $sender_io;
+ $to = @$_POST['to'];
+ $_POST['content'] = htmlspecialchars(@$_POST['content']);
+ // Send data to socket group where uid is specified
+ if($to){
+ $sender_io->to($to)->emit('new_msg', $_POST['content']);
+ // Otherwise push data to all UIDs
+ }else{
+ $sender_io->emit('new_msg', @$_POST['content']);
+ }
+ // http interface returns. If the user is offline, socket returns fail
+ if($to && !isset($uidConnectionMap[$to])){
+ return $http_connection->send('offline');
+ }else{
+ return $http_connection->send('ok');
+ }
+ }
+ return $http_connection->send('fail');
+ };
+  
+});
+  
+if(!defined('GLOBAL_START'))
+{
+ Worker::runAll();
+}
+*/

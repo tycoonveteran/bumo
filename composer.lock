@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "342f37359fd378a890cbd7315324e422",
+    "content-hash": "87fc74b5a715355eaba33a36baaa910e",
     "packages": [
         {
             "name": "myclabs/php-enum",
@@ -172,6 +172,165 @@
                 "source": "https://github.com/php-fig/log/tree/1.1.4"
             },
             "time": "2021-05-03T11:20:27+00:00"
+        },
+        {
+            "name": "workerman/channel",
+            "version": "v1.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/walkor/channel.git",
+                "reference": "3df772d0d20d4cebfcfd621c33d1a1ab732db523"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/walkor/channel/zipball/3df772d0d20d4cebfcfd621c33d1a1ab732db523",
+                "reference": "3df772d0d20d4cebfcfd621c33d1a1ab732db523",
+                "shasum": ""
+            },
+            "require": {
+                "workerman/workerman": ">=4.0.12"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Channel\\": "./src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "homepage": "http://www.workerman.net",
+            "support": {
+                "issues": "https://github.com/walkor/channel/issues",
+                "source": "https://github.com/walkor/channel/tree/v1.1.0"
+            },
+            "time": "2021-02-08T02:45:42+00:00"
+        },
+        {
+            "name": "workerman/mqtt",
+            "version": "v1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/walkor/mqtt.git",
+                "reference": "248cdf4216a3373557ea8db9510d563d2988e820"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/walkor/mqtt/zipball/248cdf4216a3373557ea8db9510d563d2988e820",
+                "reference": "248cdf4216a3373557ea8db9510d563d2988e820",
+                "shasum": ""
+            },
+            "require": {
+                "workerman/workerman": ">=3.3.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Workerman\\Mqtt\\": "./src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "homepage": "http://www.workerman.net",
+            "support": {
+                "issues": "https://github.com/walkor/mqtt/issues",
+                "source": "https://github.com/walkor/mqtt/tree/v1.1"
+            },
+            "time": "2021-01-05T02:06:42+00:00"
+        },
+        {
+            "name": "workerman/phpsocket.io",
+            "version": "v1.1.12",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/walkor/phpsocket.io.git",
+                "reference": "7c4fd8738344a2950897ea97532312e791b099b7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/walkor/phpsocket.io/zipball/7c4fd8738344a2950897ea97532312e791b099b7",
+                "reference": "7c4fd8738344a2950897ea97532312e791b099b7",
+                "shasum": ""
+            },
+            "require": {
+                "workerman/channel": ">=1.0.0",
+                "workerman/workerman": ">=3.5.16"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PHPSocketIO\\": "./src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "homepage": "http://www.workerman.net",
+            "keywords": [
+                "Socket.io"
+            ],
+            "support": {
+                "issues": "https://github.com/walkor/phpsocket.io/issues",
+                "source": "https://github.com/walkor/phpsocket.io/tree/v1.1.12"
+            },
+            "time": "2020-03-20T10:42:09+00:00"
+        },
+        {
+            "name": "workerman/workerman",
+            "version": "v4.0.20",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/walkor/Workerman.git",
+                "reference": "ab9a28b03c34549525fac1cc170f6e3b65e047e6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/walkor/Workerman/zipball/ab9a28b03c34549525fac1cc170f6e3b65e047e6",
+                "reference": "ab9a28b03c34549525fac1cc170f6e3b65e047e6",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3"
+            },
+            "suggest": {
+                "ext-event": "For better performance. "
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Workerman\\": "./"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "walkor",
+                    "email": "walkor@workerman.net",
+                    "homepage": "http://www.workerman.net",
+                    "role": "Developer"
+                }
+            ],
+            "description": "An asynchronous event driven PHP framework for easily building fast, scalable network applications.",
+            "homepage": "http://www.workerman.net",
+            "keywords": [
+                "asynchronous",
+                "event-loop"
+            ],
+            "support": {
+                "email": "walkor@workerman.net",
+                "forum": "http://wenda.workerman.net/",
+                "issues": "https://github.com/walkor/workerman/issues",
+                "source": "https://github.com/walkor/workerman",
+                "wiki": "http://doc.workerman.net/"
+            },
+            "time": "2021-10-16T13:22:23+00:00"
         }
     ],
     "packages-dev": [],
