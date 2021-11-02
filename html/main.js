@@ -30,20 +30,24 @@ $(function() {
     $('#root').html(data);
   });
 
-  $('#connect').click(function() {
-    socket.emit ('join', $('#gameId').val());
+  $('#create').click(function() {
+    socket.emit ('create', $('#username').val());
   });
 
-  $('#showGames').click(function() {
-    socket.emit ('getGameList');
+  $('#join').click(function() {
+    socket.emit ('join', [$('#username').val(), $('#gameId').val()]);
   });
 
-  socket.on('getGameListResponse', function(data) {
-    $('#root').append ('<ul>');
-    $(data).each (function(value) {
-      $('#root').append('<li>'+ value + '</li>');
-    });
-    $('#root').append('</ul>');
+  socket.on('NewGame', function(data) {
+    log(data);
   });
+
+  socket.on('Joined', function(data) {
+    log(data);
+  });
+
+  function log (data) {
+    $('#log').html($('#log').html() + "\n" + JSON.stringify(data));
+  }
 
 });

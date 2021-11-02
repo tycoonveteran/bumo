@@ -178,6 +178,11 @@ implements JsonSerializable
         $this->players[$this->nextPlayer]->addCard($this->getTopCardFromDeck());
     }
 
+    public function getPlayers() 
+    {
+        return $this->players;
+    }
+
     public function jsonSerialize() : mixed 
     {
 

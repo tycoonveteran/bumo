@@ -6,7 +6,6 @@ use Workerman\Worker;
 
 class MQTTBotClient 
 {
-    const CLIENTNAME = "bumoclient";
     const MQTTSERVER = "192.168.0.251";
     const MQTTPORT = 1883;
 
@@ -15,10 +14,17 @@ class MQTTBotClient
     /** @var Worker */
     private $worker;
 
+    private $clientId;
+
+    public function __construct($clientId) 
+    {
+        $this->clientId = $clientId;
+    }
+
     private function connect() : bool
     {
         try {
-            $this->client = new MqttClient(self::MQTTSERVER, self::MQTTPORT);
+            $this->client = new MqttClient(self::MQTTSERVER, self::MQTTPORT, $this->clientId );
             $this->client->connect(null, true);
             return true;
         } catch (Throwable $e) {
@@ -48,20 +54,29 @@ class MQTTBotClient
         }
     }
 
-    public function subscribeToTopic ($topic, $callBackFunction) 
+    public function subscribeToTopic ($topic, $callBackFunction, $socket) 
     {
-        print 'Start subscriceToTopic';
-        $this->worker = new Worker();
-        $this->worker->onWorkerStart = function() use ($topic, $callBackFunction) {
-            print 'Run Workerman subscriceToTopic';
-            $mqtt = new Workerman\Mqtt\Client('mqtt://'.self::MQTTSERVER.':'.self::MQTTPORT);
-            $mqtt->onConnect = function($mqtt) use ($topic) {
-                print 'Subscribe Workerman subscriceToTopic ' . $topic;
-                $mqtt->subscribe($topic);
+        $socket->on('workerStart', function() use ($topic, $callBackFunction) {
+            print 'Start subscriceToTopic';
+            $innerWorker = new Worker();
+    
+            $innerWorker->onWorkerStart = function() use ($topic, $callBackFunction) {
+                print 'Run Workerman subscriceToTopic' . PHP_EOL;
+                $mqtt = new Workerman\Mqtt\Client(
+                    'mqtt://'.self::MQTTSERVER.':'.self::MQTTPORT,
+                    ['client_id' => $this->clientId, 
+                     'debug' => true] 
+                );
+    
+                $mqtt->onConnect = function($mqtt) use ($topic) {
+                    print 'Subscribe Workerman subscriceToTopic ' . $topic . PHP_EOL;
+                    $mqtt->subscribe($topic);
+                };
+                $mqtt->onMessage = $callBackFunction;
+                $mqtt->connect();
             };
-            $mqtt->onMessage = $callBackFunction;
-            $mqtt->connect();
-        };
-        $this->worker->run();
+
+            $innerWorker->run();
+        });
     }
 }

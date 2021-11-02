@@ -2,6 +2,7 @@
 
 use Workerman\Worker;
 use Workerman\Timer;
+use PHPSocketIO\SocketIO;
 
 class WebSocketServer {
 
@@ -13,90 +14,111 @@ class WebSocketServer {
     private Player $player;
     private MQTTBotClient $mqttClient;
 
-    private string $gameId;
+    private ?string $gameId;
     private bool $needsToJoin = false;
 
-    public function __construct($playerName, $playerId, $gameId = null) 
+    private object $socket; 
+
+    public function __construct($playerName, $playerId, $gameId = null, &$socket) 
     {
+        // assign Socket
+        $this->socket =& $socket;
+
         // create mqtt Client
-        $this->mqttClient = new MQTTBotClient();
+        $this->mqttClient = new MQTTBotClient($playerId);
         
         // Create Player
         $this->player = new Player($playerName, $playerId);
         
-        if ($gameId == null) 
-        {
-            // create new game as first player
-            $this->gameController = new GameController($this->player, $gameId);
-            $this->gameId = $this->gameController->getGameId();
-            // publish game!
-            $task = new Worker();
-            $task->onWorkerStart = function ($task) {
-                // 2.5 seconds
-                $time_interval = 2.5; 
-                $timer_id = Timer::add($time_interval, function () {
-                    print "Publish New Game! " . PHP_EOL;
-                    $this->mqttClient->sendMessage(
-                        "bumo/game", 
-                        $this->gameController->getGameId()
-                    );
-                });
-            };
-            $task->run();
-        } else {
-            $this->gameId = $gameId;
-            $this->needsToJoin = true;
-        }
+        // assign gameid
+        $this->gameId = $gameId;
     }
 
-    public function getGameList($callBackFunction) 
+    public function initialize() 
     {
-        print 'call getGameList';
-        $this->mqttClient->subscribeToTopic(
-            "bumo/game",
-            $callBackFunction
+        if ($this->gameId == null) {
+            // create new game as first player
+            $this->gameController = new GameController($this->player);
+            $this->gameId = $this->gameController->getGameId();
+            // publish game!
+            print '['.$this->player->getPlayerId().'] Publish New Game! ' . PHP_EOL;
+            $message['state'] = "PUBLISH";
+            $message['gameController'] = serialize($this->gameController);
+        } else {
+            print '['.$this->player->getPlayerId().'] Join Game! ' . PHP_EOL;
+            $this->gameId = $this->gameId;
+            $this->needsToJoin = true;
+            $message['state'] = "JOIN";
+            $message['player'] = serialize($this->player);
+        }
+
+        $this->mqttClient->sendMessage(
+            "bumo/".$this->gameId, 
+            json_encode ($message)
         );
     }
 
     public function keepAlive() 
     {
-        
+        print '['.$this->player->getPlayerId().'] START LISTENING!';
+
         $this->mqttClient->subscribeToTopic(
             "bumo/".$this->gameId,
-            $this->getTopicRefreshedEvent()
+            $this->getTopicRefreshedEvent(),
+            $this->socket
         );
-
-        /*
-        $buf = '';
-        if (false !== ($bytes = socket_recv($this->client, $buf, 2048, MSG_DONTWAIT)))
-        {
-            print "Got $bytes from client!";
-            print $buf;
-        }
-        */
     }
 
-    private function getTopicRefreshedEvent () 
+    public function getTopicRefreshedEvent () 
     {
-        return function ($topic, $message) {
-            print $topic . ':' . $message;
+        return (function ($topic, $message) {
+            print '['.$this->player->getPlayerId().'] RECEIVED: ' . $topic . ':' . $message;
+            $message = json_decode($message);
 
             // In Message ist immer ein serialized GameController
-            $receivedGameController = unserialize($message);
-            if ($receivedGameController instanceof GameController) {
-                $this->gameController = $receivedGameController;
+            switch ($message->state) {
+                case 'JOIN': 
+                    // Neuer Spieler joint, wir schicken Spielinfo raus!
+                    if ($this->needsToJoin === false) {
 
-                if ($this->needsToJoin) {
-                    $this->gameController->joinGame($this->player);
-                    $this->mqttClient->sendMessage(
-                        "bumo/".$this->gameId,
-                        serialize($this->gameController)
-                    );
-                }
+                        print '['.$this->player->getPlayerId().']  Publish New Game! ' . PHP_EOL;
+                        $responseMessage['state'] = "PUBLISH";
+                        $receivedPlayer = unserialize($message->player);
+                    
+                        $this->gameController->joinGame($receivedPlayer);
+                        $responseMessage['gameController'] = serialize($this->gameController);
 
-                //socket_write($this->client, json_encode($this->gameController));
+                        $this->mqttClient->sendMessage(
+                            "bumo/".$this->gameId, 
+                            json_encode ($responseMessage)
+                        );
+                    }
+                    break;
+
+                case 'PUBLISH':
+                    print '['.$this->player->getPlayerId().'] Published Case. unserialize GameController' . PHP_EOL;
+                    /** @var $receivedGameController GameController */
+                    $receivedGameController = unserialize($message->gameController);
+                    if ($this->needsToJoin) {
+                        foreach ($receivedGameController->getPlayers() as $player) {
+                            print '['.$this->player->getPlayerId().'] Is ' . $player->getPlayerId() . '==' .  $this->player->getPlayerId() . PHP_EOL;
+                            if ($player->getPlayerId() == $this->player->getPlayerId()) {
+                                print '['.$this->player->getPlayerId().'] Succesfully joined!' . PHP_EOL;
+                                // erfolgreich join
+                                $this->needsToJoin = false;
+                                $this->gameController = $receivedGameController;
+
+                                print '['.$this->player->getPlayerId().'] Sending Success to Client!' . PHP_EOL;
+                                $this->socket->emit(
+                                    'Joined', 
+                                    ['gameId' => $this->gameController->getGameId()]
+                                );
+                            }
+                        }
+                    }
+                    break;
             }
-        };
+        });
     }
 }
 
