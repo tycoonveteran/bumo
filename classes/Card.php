@@ -20,4 +20,9 @@ class Card
     {
         return $this->value;
     }
+
+    public function __toString() : string 
+    {
+        return $this->getCardColor() . ':' . $this->getCardValue();
+    }
 }

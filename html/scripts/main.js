@@ -38,11 +38,19 @@ $(function() {
     socket.emit ('join', [$('#username').val(), $('#gameId').val()]);
   });
 
+  $('#run').click(function() {
+    socket.emit ('run', [$('#username').val(), $('#gameId').val()]);
+  });
+
+  $('#playCard').click(function() {
+    socket.emit ('playCard', [$('#username').val(), $('#cardIndex').val()]);
+  });
+
   socket.on('NewGame', function(data) {
     log(data);
   });
 
-  socket.on('Joined', function(data) {
+  socket.on('gameState', function(data) {
     log(data);
   });
 

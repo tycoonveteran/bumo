@@ -44,31 +44,8 @@ $io->on('connection', function($socket){
         ));
         
         $gameId = $socket->webSocketHandler->gameController->getGameId();
-        $topic = 'bumo/'.$gameId;
-        $callBackFunction = $socket->webSocketHandler->getTopicRefreshedEvent();
 
-        print 'Start subscriceToTopic';
-        $socket->innerWorkerHost = new Worker();
-
-        $socket->innerWorkerHost->onWorkerStart = function() 
-            use ($socket, $topic, $callBackFunction) {
-
-            print 'Run Workerman subscriceToTopic' . PHP_EOL;
-            $mqtt = new Workerman\Mqtt\Client(
-                'mqtt://'.MQTTBotClient::MQTTSERVER.'?token='.$socket->userid.':'.MQTTBotClient::MQTTPORT,
-                ['client_id' => $socket->userid, 
-                 'debug' => true] 
-            );
-
-            $mqtt->onConnect = function($mqtt) use ($topic) {
-                print 'Subscribe Workerman subscriceToTopic ' . $topic . PHP_EOL;
-                $mqtt->subscribe($topic);
-            };
-            $mqtt->onMessage = $callBackFunction;
-            $mqtt->connect();
-        };
-
-        $socket->innerWorkerHost->run();
+        $socket->webSocketHandler->keepAlive();
     });
     
     $socket->on('join', function ($data) use($socket){
@@ -100,31 +77,44 @@ $io->on('connection', function($socket){
             'numUsers' => $numUsers
         ));
 
-        $topic = 'bumo/'.$gameId;
-        $callBackFunction = $socket->webSocketHandler->getTopicRefreshedEvent();
+        $socket->webSocketHandler->keepAlive();
+    });
 
-        print 'Start subscriceToTopic';
-        $socket->innerWorkerJoiner = new Worker();
+    $socket->on('run', function ($data) use($socket){
+        global $usernames, $numUsers;
+        // Vorhandenem Spiel beitreten
+        $username = $data[0];
+        $gameId = $data[1];
+        
+        if ($socket->webSocketHandler->gameController->canStartNewGame()) {
+            $socket->webSocketHandler->gameController->initNewGame();
+            $socket->webSocketHandler->publishNewGameState();
 
-        $socket->innerWorkerJoiner->onWorkerStart = function() 
-            use ($socket, $topic, $callBackFunction) {
+        } else {
+            // echo globally (all clients) that a person has connected
+            $socket->broadcast->emit('NoStartAllowed', array(
+                'numUsers' => $numUsers
+            ));
+        }
+    });
 
-            print 'Run Workerman subscriceToTopic' . PHP_EOL;
-            $mqtt = new Workerman\Mqtt\Client(
-                'mqtt://'.MQTTBotClient::MQTTSERVER.'?token='.$socket->userid.':'.MQTTBotClient::MQTTPORT,
-                ['client_id' => $socket->userid, 
-                 'debug' => true] 
-            );
-
-            $mqtt->onConnect = function($mqtt) use ($topic) {
-                print 'Subscribe Workerman subscriceToTopic ' . $topic . PHP_EOL;
-                $mqtt->subscribe($topic);
-            };
-            $mqtt->onMessage = $callBackFunction;
-            $mqtt->connect();
-        };
-
-        $socket->innerWorkerJoiner->run();
+    $socket->on('playCard', function ($data) use($socket){
+        global $usernames, $numUsers;
+        // Vorhandenem Spiel beitreten
+        $username = $data[0];
+        $cardIndex = $data[1];
+        
+        if ($socket->webSocketHandler->gameController->getNextPlayerId() == $socket->userid &&
+            $socket->webSocketHandler->gameController->makePlayerMove($cardIndex)
+        ) {
+            // Zug war erfolgreich! 
+            $socket->webSocketHandler->publishNewGameState();
+        } else {
+            // echo globally (all clients) that a person has connected
+            $socket->broadcast->emit('NoPlayCardAllowed', array(
+                'numUsers' => $numUsers
+            ));
+        }
     });
 
     // when the user disconnects.. perform this
@@ -139,11 +129,9 @@ $io->on('connection', function($socket){
            $socket->broadcast->emit('user left', array(
                'username' => $socket->username,
                'numUsers' => $numUsers
-            ));
+           ));
         }
    });
-
-   
 });
 
 if (!defined('GLOBAL_START')) {

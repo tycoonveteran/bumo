@@ -19,4 +19,15 @@ class CardColor
     {
         return $this->_;
     }
+
+    public function __toString() : string 
+    {
+        return match ($this->_) {
+            self::RED => 'ROT',
+            self::BLUE => 'BLAU',
+            self::GREEN => 'GRÜN',
+            self::YELLOW => 'GELB',
+            self::SPECIAL => 'SPECIAL',
+        };
+    }
 }

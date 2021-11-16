@@ -13,9 +13,9 @@ implements JsonSerializable
     private string $gameId; 
 
     /** @var Card[] Abgelegte Kartenstapel */
-    private array $staple;
+    private array $staple = [];
     /** @var Card[] Verdeckter Kartenstapel */
-    private array $cardDeck;
+    private array $cardDeck = [];
 
     private int $cardCount;
 
@@ -23,7 +23,12 @@ implements JsonSerializable
 
     private int $gameStatus; 
 
-    public function __construct(Player $currentPlayer, $gameId = null, int $cardCount = 7)
+    public function __construct()
+    {
+        
+    }
+
+    public function initialize(Player $currentPlayer, $gameId = null, int $cardCount = 7) 
     {
         // Neues Spiel, erster Spieler
         $this->gameId = $gameId ?? uniqid();
@@ -106,12 +111,12 @@ implements JsonSerializable
 
     public function shuffleCardDeck() : void
     {
-        shuffle($cardDeck);
+        shuffle($this->cardDeck);
     }
 
     public function getTopCardFromDeck () : Card
     {
-        return array_slice ($this->staple, 0, 1)[0];
+        return array_shift ($this->cardDeck);
     }
 
     public function addTopCardToStaple (Card $card) : void
@@ -121,19 +126,19 @@ implements JsonSerializable
 
     public function checkCardsCompatible(Card $card1, Card $card2) : bool 
     {
-        if (in_array (CardColor::SPECIAL, [$card1->getCardColor(), $card2->getCardColor()])) {
+        if (in_array (CardColor::SPECIAL, [$card1->getCardColor()->getColor(), $card2->getCardColor()->getColor()])) {
             // Einer der beiden Karten ist ein Joker / 4+, das heißt es kann 
             // eine beliebige Karte folgen bzw. diese kann auf eine beliebige
             // Karte gelegt werden. 
             return true;
         }
 
-        if ($card1->getCardColor() == $card2->getCardColor()) {
+        if ($card1->getCardColor()->getColor() == $card2->getCardColor()->getColor()) {
             // Karten haben die selbe Farbe
             return true;
         }
 
-        if ($card1->getCardValue() == $card2->getCardValue()) {
+        if ($card1->getCardValue()->getValue() == $card2->getCardValue()->getValue()) {
             // Karte hat die selbe Zahl => Farbwechsel
             return true;
         }
@@ -161,10 +166,11 @@ implements JsonSerializable
 
     private function nextPlayerIndex() : int 
     {
-        if (next($this->players) === false) {
-            reset($this->players);
-        } 
-        return key($this->players);
+        if (isset($this->players[$this->nextPlayer+1]))  {
+            return $this->nextPlayer+1;
+        } else {
+            return 0;
+        }
     }
 
     private function checkPlayerWins () : bool 
@@ -185,6 +191,16 @@ implements JsonSerializable
 
     public function jsonSerialize() : mixed 
     {
+        foreach ($this->players as $player) {
+            $data['players'][$player->getPlayerId()]['cards'] = $player->getCardsAsStringArray();
+        }
+        $data['topCardStaple'] = (string)end($this->staple);
+        $data['nextPlayerId'] = $this->getNextPlayerId();
+        return $data;
+    }
 
+    public function getNextPlayerId() 
+    {
+        return $this->players[$this->nextPlayer]->getPlayerId();
     }
 }

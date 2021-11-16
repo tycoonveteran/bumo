@@ -3,7 +3,7 @@
 class Player 
 {
     
-    private array $playerCards;
+    private array $playerCards = [];
     private string $name;
     private string $playerId;
     
@@ -24,9 +24,10 @@ class Player
         return $this;
     }
 
-    public function removeCard($cardIndex) : Card 
+    public function removeCard($cardIndex)
     {
-        return array_slice ($this->playerCards, $cardIndex, 1)[0];
+        unset ($this->playerCards[$cardIndex]);
+        $this->playerCards = array_values($this->playerCards);
     }
 
     public function getCardByIndex ($cardIndex) : Card 
@@ -37,6 +38,16 @@ class Player
     public function getCards() : array 
     {
         return $this->playerCards;
+    }
+
+    public function getCardsAsStringArray() : array 
+    {
+        $data = [];
+        foreach ($this->playerCards as $card)
+        {
+            $data[] = (string)$card;
+        }
+        return $data;
     }
 
 }
