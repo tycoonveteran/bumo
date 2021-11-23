@@ -72,7 +72,7 @@ class WebSocketServer {
         $task = new Worker();
         $task->onWorkerStart = function ($task) {
             // 2.5 seconds
-            $time_interval = 3; 
+            $time_interval = 1; 
             $timer_id = Timer::add($time_interval, function () {
                 $message = $this->fsmb->getLatestMessage();
                 if ($message !== false) {

@@ -23,6 +23,10 @@ implements JsonSerializable
 
     private int $gameStatus; 
 
+    private bool $reversedGameplay = false;
+
+    private ?CardColor $playerColorWish = null;
+
     public function __construct()
     {
         
@@ -64,8 +68,14 @@ implements JsonSerializable
         
         // Nun hat jeder Spieler X Karten auf der Hand.
         // 4. Oberste Karte offenlegen. 
-        $this->addTopCardToStaple($this->getTopCardFromDeck());
+        $topCard = $this->getTopCardFromDeck();
+        $this->addTopCardToStaple($topCard);
         
+        // Spezialkarten-Handling zu Spielbeginn
+        // TODO: Wenn erste Karte +2 oder +4 ist, dann kriegt
+        // der aktuelle Spieler die Karten und nicht der folgende!
+        $this->handleSpecialCardPlayed($topCard);
+
         // 5. Spiel starten
         $this->gameStatus = self::GAME_RUNNING;
     }
@@ -127,9 +137,15 @@ implements JsonSerializable
     public function checkCardsCompatible(Card $card1, Card $card2) : bool 
     {
         if (in_array (CardColor::SPECIAL, [$card1->getCardColor()->getColor(), $card2->getCardColor()->getColor()])) {
-            // Einer der beiden Karten ist ein Joker / 4+, das heißt es kann 
-            // eine beliebige Karte folgen bzw. diese kann auf eine beliebige
-            // Karte gelegt werden. 
+            // Einer der beiden Karten ist ein Joker / 4+, das heißt es muss 
+            // Die Farbe folgen, welche in playerColorWish drinsteht
+            if ($this->playerColorWish !== null && 
+                $this->playerColorWish->getColor() == $card2->getCardColor()->getColor()) {
+                $this->playerColorWish = null;
+                return true;
+            } elseif ( $this->playerColorWish !== null ) {
+                return false;
+            }
             return true;
         }
 
@@ -146,7 +162,7 @@ implements JsonSerializable
         return false;
     }
 
-    public function makePlayerMove ($cardIndex) : bool
+    public function makePlayerMove ($cardIndex, $wishColor) : bool
     {
         // Variante 1: Spieler legt Karte
         $playerCard = $this->players[$this->nextPlayer]->getCardByIndex($cardIndex);
@@ -154,6 +170,8 @@ implements JsonSerializable
             $this->staple[] = $playerCard;
             $this->players[$this->nextPlayer]->removeCard($cardIndex);
             
+            $this->handleSpecialCardPlayed($playerCard, $wishColor);
+
             if ($this->checkPlayerWins()) {
                 $this->gameStatus = self::GAME_FINISHED;
             } else {
@@ -164,12 +182,50 @@ implements JsonSerializable
         return false;
     }
 
+    private function handleSpecialCardPlayed($cardPlayed, $playerColorWish = null) 
+    {
+        switch ($cardPlayed->getCardValue()->getValue()) {
+            case CardValue::SPECIAL_AUSSETZEN: 
+                // Aussetzen: Nächster Spieler ist dran.
+                $this->nextPlayer = $this->nextPlayerIndex();
+                break;
+            case CardValue::SPECIAL_RICHTUNGSWECHSEL: 
+                $this->reversedGameplay = !$this->reversedGameplay;
+                break;
+            case CardValue::SPECIAL_PLUS_2:
+                $nextPlayer = $this->nextPlayerIndex();
+                print 'Adding 2 Cards for Player: ' . $nextPlayer . PHP_EOL;
+                for ($i = 0; $i < 2; $i++) {
+                    $this->addCardForPlayer($nextPlayer);
+                }
+                break;
+            case CardValue::SPECIAL_PLUS_4:
+
+                $this->playerColorWish = $playerColorWish ? new CardColor((int)$playerColorWish) : null;
+                $nextPlayer = $this->nextPlayerIndex();
+                print 'Adding 4 Cards for Player: ' . $nextPlayer . PHP_EOL;
+                for ($i = 0; $i < 4; $i++) {
+                    $this->addCardForPlayer($nextPlayer);
+                }
+                break;
+            case CardValue::SPECIAL_JOKER:
+                $this->playerColorWish = $playerColorWish ? new CardColor((int)$playerColorWish) : null;
+                break;
+        }
+    }
+
     private function nextPlayerIndex() : int 
     {
-        if (isset($this->players[$this->nextPlayer+1]))  {
-            return $this->nextPlayer+1;
-        } else {
+        if (!$this->reversedGameplay) {
+            if (isset($this->players[$this->nextPlayer+1]))  {
+                return $this->nextPlayer+1;
+            } 
             return 0;
+        } else {
+            if (isset($this->players[$this->nextPlayer-1]))  {
+                return $this->nextPlayer-1;
+            } 
+            return array_key_last($this->players);
         }
     }
 
@@ -178,10 +234,16 @@ implements JsonSerializable
         return count($this->players[$this->nextPlayer]->getCards()) == 0;
     }
 
-    public function addCardForPlayer() : void 
+    public function addCardForPlayer($playerId = null) : void 
     {
         // Variante 2: Spieler zieht Karte
-        $this->players[$this->nextPlayer]->addCard($this->getTopCardFromDeck());
+        if ($playerId == null) {
+            $this->players[$this->nextPlayer]->addCard($this->getTopCardFromDeck());
+            $this->nextPlayer = $this->nextPlayerIndex();
+        } else {
+            print 'Adding Card for ' . $playerId . '...' . PHP_EOL;
+            $this->players[$playerId]->addCard($this->getTopCardFromDeck());
+        }
     }
 
     public function getPlayers() 

@@ -45,11 +45,11 @@ class CardValue
             self::V7 => '7',
             self::V8 => '8',
             self::V9 => '9',
-            self::SPECIAL_AUSSETZEN => '(AUSSETZEN)',
-            self::SPECIAL_RICHTUNGSWECHSEL => '(RICHTUNGSWECHSEL)',
-            self::SPECIAL_PLUS_2 => '(+2)',
-            self::SPECIAL_PLUS_4 => '(+4)',
-            self::SPECIAL_JOKER => '(JOKER)',
+            self::SPECIAL_AUSSETZEN => 'Aussetzen',
+            self::SPECIAL_RICHTUNGSWECHSEL => 'Retour',
+            self::SPECIAL_PLUS_2 => '+2',
+            self::SPECIAL_PLUS_4 => '+4',
+            self::SPECIAL_JOKER => 'Wünschen',
         };
     }
 }

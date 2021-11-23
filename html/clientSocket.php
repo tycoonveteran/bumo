@@ -33,17 +33,17 @@ $io->on('connection', function($socket){
         ++$numUsers;
         $socket->addedUser = true;
 
-        $socket->emit('NewGame', array( 
-            'gameId' => $socket->webSocketHandler->gameController->getGameId(),
-            'gameController' => serialize( $socket->webSocketHandler->gameController )
+        $gameId = $socket->webSocketHandler->gameController->getGameId();
+
+        $socket->emit('yourUserId', array( 
+            'userId' => $socket->userid,
+            'gameId' => $gameId
         ));
 
         // echo globally (all clients) that a person has connected
         $socket->broadcast->emit('user joined', array(
             'numUsers' => $numUsers
         ));
-        
-        $gameId = $socket->webSocketHandler->gameController->getGameId();
 
         $socket->webSocketHandler->keepAlive();
     });
@@ -73,8 +73,9 @@ $io->on('connection', function($socket){
         $socket->addedUser = true;
 
         // echo globally (all clients) that a person has connected
-        $socket->broadcast->emit('user joined', array(
-            'numUsers' => $numUsers
+        $socket->emit('yourUserId', array( 
+            'userId' => $socket->userid,
+            'gameId' => $gameId
         ));
 
         $socket->webSocketHandler->keepAlive();
@@ -103,11 +104,30 @@ $io->on('connection', function($socket){
         // Vorhandenem Spiel beitreten
         $username = $data[0];
         $cardIndex = $data[1];
+        $wishColor = $data[2];
         
         if ($socket->webSocketHandler->gameController->getNextPlayerId() == $socket->userid &&
-            $socket->webSocketHandler->gameController->makePlayerMove($cardIndex)
+            $socket->webSocketHandler->gameController->makePlayerMove($cardIndex, $wishColor)
         ) {
             // Zug war erfolgreich! 
+            $socket->webSocketHandler->publishNewGameState();
+        } else {
+            // echo globally (all clients) that a person has connected
+            $socket->broadcast->emit('NoPlayCardAllowed', array(
+                'numUsers' => $numUsers
+            ));
+        }
+    });
+
+    $socket->on('pullCard', function ($data) use($socket){
+        global $usernames, $numUsers;
+        // Vorhandenem Spiel beitreten
+        $username = $data[0];
+        
+        if ($socket->webSocketHandler->gameController->getNextPlayerId() == $socket->userid) {
+            // Spieler zieht Karte
+            $socket->webSocketHandler->gameController->addCardForPlayer();
+            
             $socket->webSocketHandler->publishNewGameState();
         } else {
             // echo globally (all clients) that a person has connected

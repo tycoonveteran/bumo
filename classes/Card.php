@@ -25,4 +25,5 @@ class Card
     {
         return $this->getCardColor() . ':' . $this->getCardValue();
     }
+
 }
