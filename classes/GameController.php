@@ -126,6 +126,17 @@ implements JsonSerializable
 
     public function getTopCardFromDeck () : Card
     {
+        if (count($this->cardDeck) == 0) {
+            // Deck ist leer, wir mischen den Ablagestapel neu, oberste Karte
+            // bleibt aber auf dem Ablage-Stapel!
+
+            $topCardFromStaple = array_pop($this->staple);
+            $this->cardDeck = $this->staple;
+            $this->staple = [];
+            $this->staple[] = $topCardFromStaple;
+
+            $this->shuffleCardDeck();
+        }
         return array_shift ($this->cardDeck);
     }
 
@@ -255,14 +266,41 @@ implements JsonSerializable
     {
         foreach ($this->players as $player) {
             $data['players'][$player->getPlayerId()]['cards'] = $player->getCardsAsStringArray();
+            $data['players'][$player->getPlayerId()]['name']  = $player->getName();
         }
         $data['topCardStaple'] = (string)end($this->staple);
         $data['nextPlayerId'] = $this->getNextPlayerId();
+        $data['currentGameState'] = $this->gameStatus;
         return $data;
     }
 
     public function getNextPlayerId() 
     {
         return $this->players[$this->nextPlayer]->getPlayerId();
+    }
+
+    public function prepareOutputForPlayerId($playerId) 
+    {
+        foreach ($this->players as $player) {
+            if ($player->getPlayerId() != $playerId) {
+                // karten maskieren
+                $playerCards = $player->getCardsAsStringArray();
+                for ($i = 0; $i < count($playerCards); $i++ ) {
+                    $data['players'][$player->getPlayerId()]['cards'][] = 'Cover';
+                }
+            } else {
+                $data['players'][$player->getPlayerId()]['cards'] = $player->getCardsAsStringArray();
+            }
+            $data['players'][$player->getPlayerId()]['name']  = $player->getName();
+        }
+        $data['topCardStaple'] = (string)end($this->staple);
+        $data['nextPlayerId'] = $this->getNextPlayerId();
+        $data['currentGameState'] = $this->gameStatus;
+        return $data;
+    }
+
+    public function getGameStatus() 
+    {
+        return $this->gameStatus;
     }
 }

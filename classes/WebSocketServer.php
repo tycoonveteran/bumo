@@ -6,7 +6,7 @@ use PHPSocketIO\SocketIO;
 
 class WebSocketServer {
 
-    public GameController $gameController;
+    public ?GameController $gameController = null;
     private Player $player;
     private FileSystemMessageBroker $fsmb;
 
@@ -14,12 +14,16 @@ class WebSocketServer {
     private bool $needsToJoin = false;
 
     private object $socket; 
+    private $timer_id;
 
-    public function __construct($playerName, $playerId, $gameId = null, &$socket) 
+    private SocketIO $io;
+
+    public function __construct($playerName, $playerId, $gameId = null, &$socket, &$io) 
     {
         // assign Socket
         $this->socket =& $socket;
-                
+        $this->io =& $io;
+
         // Create Player
         $this->player = new Player($playerName, $playerId);
         
@@ -69,11 +73,14 @@ class WebSocketServer {
 
         // TODO: Task als Attribut der Klasse implementieren 
         // und bei Beendigung oder wechsel Game ID neu initialisieren.
+        if ($this->timer_id != null) {
+            Timer::del($this->timer_id);
+        }
         $task = new Worker();
         $task->onWorkerStart = function ($task) {
             // 2.5 seconds
             $time_interval = 1; 
-            $timer_id = Timer::add($time_interval, function () {
+            $this->timer_id = Timer::add($time_interval, function () {
                 $message = $this->fsmb->getLatestMessage();
                 if ($message !== false) {
                     // New message 
@@ -90,8 +97,9 @@ class WebSocketServer {
                                 print '['.$this->player->getPlayerId().']  Publish New Game! ' . PHP_EOL;
                                 $responseMessage['state'] = "PUBLISH";
                                 $receivedPlayer = unserialize($message['player']);
-                            
-                                $this->gameController->joinGame($receivedPlayer);
+                                if ($this->gameController->getGameStatus() == GameController::GAME_INIT) {
+                                    $this->gameController->joinGame($receivedPlayer);
+                                }
                                 $responseMessage['gameController'] = serialize($this->gameController);
         
                                 $this->fsmb->publishMessage($responseMessage);
@@ -104,6 +112,8 @@ class WebSocketServer {
                             $receivedGameController = unserialize($message['gameController']);
                             if ($receivedGameController instanceof GameController) {
                                 $this->gameController = $receivedGameController; 
+                            } else {
+                                print "Warning! No instanceof GameController received!";
                             }
 
                             if ($this->needsToJoin) {
@@ -125,12 +135,29 @@ class WebSocketServer {
                     // Todo: umbauen von broadcast auf Einzelnachricht, Abprüfung
                     // Der Player-ID, damit der Player nur seinen eigenne Kartenstapel
                     // in der Nachricht bekommt.
-                    $this->socket->broadcast->emit('gameState', array(
-                        'gameController' => json_encode($this->gameController)
+                    $preparedOutput = $this->gameController->prepareOutputForPlayerId ($this->player->getPlayerId());
+                    
+                    $this->socket->emit('gameState', array(
+                        'gameController' => json_encode($preparedOutput)
                     ));
+
+                    /*
+                    if ($this->gameController != null && $this->gameController instanceof GameController) {
+                        $this->socket->broadcast->emit('gameState', array(
+                            'gameController' => json_encode($this->gameController)
+                        ));
+                    }
+                    */
                 }
             });
         };
         $task->run();
+    }
+
+    public function __destruct()
+    {
+        if ($this->timer_id != null) {
+            Timer::del($this->timer_id);
+        }
     }
 }

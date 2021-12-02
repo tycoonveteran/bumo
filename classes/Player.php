@@ -13,6 +13,11 @@ class Player
         $this->playerId = $playerId ?? uniqid();    
     }
 
+    public function getName() : string 
+    {
+        return $this->name;
+    }
+
     public function getPlayerId() : string 
     {
         return $this->playerId;

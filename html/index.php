@@ -21,15 +21,48 @@ require_once '../vendor/autoload.php';
             .playable {
                 cursor: hand;
             }
+
+            a.button1 {
+                display: inline-block;
+                padding: 0.35em 1.2em;
+                border: 0.1em solid #FFFFFF;
+                margin: 0 0.3em 0.3em 0;
+                border-radius: 0.12em;
+                box-sizing: border-box;
+                text-decoration: none;
+                font-family: 'Roboto',sans-serif;
+                font-weight: 300;
+                color: #FFFFFF;
+                text-align: center;
+                transition: all 0.2s;
+            }
+
+            a.button1:hover{
+                color: #000000;
+                background-color: #FFFFFF;
+            }
+
+            @media all and (max-width:30em) {
+                a.button1{
+                    display: block;
+                    margin: 0.4em auto;
+                }
+            }
         </style>
     </head>
     <body>
 
         <input type="text" id="username" placeholder="Dein Name" />
-        <input type="button" id="create" value="Neues Spiel hosten" />
-        <hr>        
-        <input type="text" id="gameId" placeholder="Spiel-ID"/>
-        <input type="button" id="join" value="Spiel beitreten" />
+        <?php 
+        if (!isset($_GET['gameId'])) {
+            print '<input type="button" id="create" value="Neues Spiel hosten" />';
+        } else {
+            print '
+            <input type="text" id="gameId" placeholder="Spiel-ID" readonly="true" value="'.$_GET['gameId'].'"/>
+            <input type="button" id="join" value="Spiel beitreten" />';
+        }
+        ?>
+        
         <hr>
         <input type="button" id="run" value="Spiel starten" />
         <hr>
@@ -42,7 +75,7 @@ require_once '../vendor/autoload.php';
             <option value="4">Gelb</option>
         </select>
         <input type="button" id="playCard" value="Karte spielen" />
-        <input type="button" id="pullCard" value="Karte ziehen" />
+        
         <hr>
         <script src="/scripts/jquery.min.js"></script>
         <script src="/scripts/socket.io-client/socket.io.js"></script>
@@ -51,35 +84,43 @@ require_once '../vendor/autoload.php';
         <textarea id="log"></textarea>
         <hr>
 
-        <div style="display: block; background-color: #00aa00;" id="echtesFronted">
+        <div style="display: none; background-size: cover; background-image: url(images/backgrounds/bumo_background_green_3_logo.jpg);" id="echtesFrontend">
             <table>
                 <tr>
-                    <td></td>
-                    <td>Gegner
-                        <div id="deckPlayer2">
-                            <img style="left: 330px; z-index: 0;" src="images/cards/Cover.png" />
-                            <img style="position: absolute; left: 360px; z-index: 1;" src="images/cards/Cover.png" />
-                            <img style="position: absolute; left: 390px; z-index: 2;" src="images/cards/Cover.png" />
+                    <td><span id="namePlayer3" class="playerName"></span>
+                        <div id="deckPlayer3" class="playerDeck">
                         </div>
                     </td>
-                    <td></td>
+                    <td><span id="namePlayer4" class="playerName"></span>
+                        <div id="deckPlayer4" class="playerDeck">
+                        </div>
+                    </td>
+                    <td><span id="namePlayer5" class="playerName"></span>
+                        <div id="deckPlayer5" class="playerDeck">
+                        </div></td>
                 </tr>
                 <tr style="height: 300px;">
-                    <td></td>
+                    <td><span id="namePlayer2" class="playerName"></span>
+                        <div id="deckPlayer2" class="playerDeck">
+                        </div>
+                    </td>
                     <td>Deck
                         <div id="cardDeck">
                             <img src="images/cards/Cover.png" />
                         </div>
                     </td>
-                    <td></td>
+                    <td><span id="namePlayer6" class="playerName"></span>
+                        <div id="deckPlayer6" class="playerDeck">
+                        </div>
+                    </td>
                 </tr>
                 <tr>
-                    <td></td>
-                    <td>Du
-                        <div id="deckPlayer1">
-                            <img style="left: 330px; z-index: 0;" src="images/cards/Gelb_+2.png" />
-                            <img style="position: absolute; left: 360px; z-index: 1;" src="images/cards/Blau_7.png" />
-                            <img style="position: absolute; left: 390px; z-index: 2;" src="images/cards/Blau_5.png" />
+                    <td>
+                        <a href="javascript:void();" class="button1" id="pullCard">Karte ziehen</a>
+                    </td>
+                    <td><span id="namePlayer1" class="playerName">Du</span>
+                        <div id="deckPlayer1" class="playerDeck">
+                            
                         </div>
                     </td>
                     <td></td>

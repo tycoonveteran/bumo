@@ -9,11 +9,12 @@ use PHPSocketIO\SocketIO;
 require_once "../vendor/autoload.php";
 
 $io = new SocketIO(2020);
-$io->on('connection', function($socket){
+$io->on('connection', function($socket) use ($io) {
+    
     $socket->addedUser = false;
 
     // when the client emits 'create', this listens and executes
-    $socket->on('create', function ($username) use($socket){
+    $socket->on('create', function ($username) use($socket, $io){
         global $usernames, $numUsers;
         // we store the username in the socket session for this client
         $socket->username = $username;
@@ -23,7 +24,8 @@ $io->on('connection', function($socket){
             $socket->username, 
             $socket->userid,
             null,
-            $socket
+            $socket,
+            $io
         );
 
         $socket->webSocketHandler->initialize();
@@ -48,7 +50,7 @@ $io->on('connection', function($socket){
         $socket->webSocketHandler->keepAlive();
     });
     
-    $socket->on('join', function ($data) use($socket){
+    $socket->on('join', function ($data) use($socket, $io){
         global $usernames, $numUsers;
         // Vorhandenem Spiel beitreten
         $username = $data[0];
@@ -62,7 +64,8 @@ $io->on('connection', function($socket){
             $socket->username, 
             $socket->userid,
             $gameId,
-            $socket
+            $socket,
+            $io
         );
         
         $socket->webSocketHandler->initialize();
@@ -145,11 +148,13 @@ $io->on('connection', function($socket){
             unset($usernames[$socket->username]);
             --$numUsers;
 
-           // echo globally that this client has left
-           $socket->broadcast->emit('user left', array(
-               'username' => $socket->username,
-               'numUsers' => $numUsers
-           ));
+            unset($socket->webSocketHandler);
+
+            // echo globally that this client has left
+            $socket->broadcast->emit('user left', array(
+                'username' => $socket->username,
+                'numUsers' => $numUsers
+            ));
         }
    });
 });
